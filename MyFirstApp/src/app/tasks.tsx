@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TextInput,
   Pressable,
+  ScrollView,
   Switch,
   Alert,
 } from 'react-native';
@@ -286,7 +287,11 @@ export default function TasksScreen() {
             </View>
 
             {/* Filter Chips Bar */}
-            <View style={styles.filterBar}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterBar}
+            >
               {(['all', 'pending', 'completed', 'overdue'] as const).map((st) => {
                 const active = statusFilter === st;
                 return (
@@ -315,7 +320,7 @@ export default function TasksScreen() {
                   </Pressable>
                 );
               })}
-            </View>
+            </ScrollView>
 
             {/* Sort & Count Row */}
             <View style={styles.sortRow}>
@@ -793,8 +798,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 9,
+    paddingHorizontal: 4,
     borderRadius: 10,
-    gap: 6,
+    gap: 4,
   },
   segmentText: {
     fontSize: 12,
@@ -817,6 +823,7 @@ const styles = StyleSheet.create({
   filterBar: {
     flexDirection: 'row',
     gap: 8,
+    paddingVertical: 2,
   },
   filterChip: {
     paddingHorizontal: 14,
@@ -831,6 +838,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
     paddingVertical: 2,
   },
   resultCount: {

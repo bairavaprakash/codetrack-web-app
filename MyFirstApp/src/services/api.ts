@@ -3,13 +3,13 @@ import { Platform } from 'react-native';
 import { AuthService } from '@/services/auth';
 import { AuthTokens } from '@/types';
 
-// Default backend host:
-// - Web / iOS simulator: http://localhost:8000/api/v1
-// - Android Emulator: http://10.0.2.2:8000/api/v1
-const DEFAULT_BASE_URL = Platform.select({
-  android: 'http://10.0.2.2:8000/api/v1',
-  default: 'http://localhost:8000/api/v1',
-});
+// Base URL configuration with EXPO_PUBLIC_API_URL support
+const DEFAULT_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ||
+  Platform.select({
+    android: 'http://10.0.2.2:8000/api/v1',
+    default: 'http://localhost:8000/api/v1',
+  });
 
 let currentApiUrl = DEFAULT_BASE_URL;
 
@@ -164,6 +164,7 @@ export const tasksApi = {
     due_date?: string;
     due_time?: string;
     reminder_time?: string;
+    language?: string;
     estimated_minutes?: number;
     subtasks?: { id?: string; title: string; completed?: boolean }[];
   }) {
@@ -179,6 +180,8 @@ export const tasksApi = {
     status: string;
     due_date: string;
     due_time: string;
+    reminder_time: string;
+    language: string;
     subtasks: { id: string; title: string; completed: boolean }[];
   }>) {
     const res = await apiClient.put(`/tasks/${id}`, data);

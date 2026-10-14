@@ -57,6 +57,7 @@ async def create_task(db: AsyncSession, task_in: TaskCreate, user_id: int) -> Ta
         due_date=task_in.due_date,
         due_time=task_in.due_time,
         reminder_time=task_in.reminder_time,
+        language=task_in.language,
         is_checklist_item=task_in.is_checklist_item,
         estimated_minutes=task_in.estimated_minutes,
         actual_minutes=task_in.actual_minutes,

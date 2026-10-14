@@ -29,111 +29,19 @@ function getTodayString(): string {
   return `${year}-${month}-${day}`;
 }
 
-export const SEED_TASKS: Task[] = [
-  {
-    id: 'seed-task-1',
-    title: 'Implement Binary Search & 2 Pointers in Python',
-    description: 'Solve 3 LeetCode problems covering two pointers and binary search on sorted arrays.',
-    category: 'Coding Practice',
-    priority: 'High',
-    language: 'Python',
-    date: getTodayString(),
-    startTime: '10:00',
-    deadline: '12:00',
-    completed: true,
-    completedAt: new Date(Date.now() - 3600000).toISOString(),
-    subtasks: [
-      { id: 'st-1', title: 'Two Sum II - Sorted array', completed: true },
-      { id: 'st-2', title: 'Binary Search iterative implementation', completed: true },
-      { id: 'st-3', title: 'Search in Rotated Sorted Array', completed: true },
-    ],
-    reminder: { id: 'rem-1', enabled: false, triggerTime: '09:45' },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'seed-task-2',
-    title: 'Study TypeScript Discriminated Unions',
-    description: 'Go through TypeScript roadmap module on pattern matching, narrowing, and exhaustive checking.',
-    category: 'Learning',
-    priority: 'Urgent',
-    language: 'TypeScript',
-    date: getTodayString(),
-    startTime: '14:00',
-    deadline: '16:00',
-    completed: false,
-    subtasks: [
-      { id: 'st-4', title: 'Read TypeScript handbook on Narrowing', completed: true },
-      { id: 'st-5', title: 'Refactor Redux reducer actions to discriminated unions', completed: false },
-      { id: 'st-6', title: 'Implement assertNever exhaustive checker', completed: false },
-    ],
-    reminder: { id: 'rem-2', enabled: true, triggerTime: '13:50' },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'seed-task-3',
-    title: 'Build CodeTrack Task Filter & Search UI',
-    description: 'Create responsive filter tabs and animated search bar in React Native.',
-    category: 'Project',
-    priority: 'High',
-    language: 'React Native',
-    date: getTodayString(),
-    startTime: '16:30',
-    deadline: '18:30',
-    completed: false,
-    subtasks: [
-      { id: 'st-7', title: 'Build Category and Priority pill selectors', completed: false },
-      { id: 'st-8', title: 'Implement real-time fuzzy filter algorithm', completed: false },
-    ],
-    reminder: { id: 'rem-3', enabled: true, triggerTime: '16:20' },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'seed-task-4',
-    title: 'Review SQL Window Functions (LAG / LEAD)',
-    description: 'Revise window partition queries and calculate 7-day moving averages.',
-    category: 'Revision',
-    priority: 'Medium',
-    language: 'SQL',
-    date: getTodayString(),
-    startTime: '20:00',
-    deadline: '21:00',
-    completed: false,
-    subtasks: [
-      { id: 'st-9', title: 'Write ROW_NUMBER() vs DENSE_RANK() examples', completed: false },
-      { id: 'st-10', title: 'Run EXPLAIN query plans on PostgreSQL', completed: false },
-    ],
-    reminder: { id: 'rem-4', enabled: false, triggerTime: '19:45' },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
-
-export const SEED_CHECKLIST: DailyChecklistItem[] = [
-  { id: 'cl-1', title: 'Solve 1 algorithmic problem on LeetCode', category: 'Coding', completed: true, date: getTodayString() },
-  { id: 'cl-2', title: 'Read 1 technical article or roadmap topic', category: 'Learning', completed: true, date: getTodayString() },
-  { id: 'cl-3', title: 'Commit code to GitHub repository', category: 'Project', completed: false, date: getTodayString() },
-  { id: 'cl-4', title: 'Review flashcards on SQL / DB indexing', category: 'Revision', completed: false, date: getTodayString() },
-  { id: 'cl-5', title: '30-minute deep focus Pomodoro session', category: 'Custom', completed: true, date: getTodayString() },
-];
-
-export const SEED_SESSIONS: StudySession[] = [
-  { id: 'sess-1', language: 'Python', durationMinutes: 25, completedAt: new Date(Date.now() - 7200000).toISOString(), type: 'focus' },
-  { id: 'sess-2', language: 'TypeScript', durationMinutes: 25, completedAt: new Date(Date.now() - 3600000).toISOString(), type: 'focus' },
-  { id: 'sess-3', language: 'React Native', durationMinutes: 30, completedAt: new Date().toISOString(), type: 'focus' },
-];
+export const SEED_TASKS: Task[] = [];
+export const SEED_CHECKLIST: DailyChecklistItem[] = [];
+export const SEED_SESSIONS: StudySession[] = [];
 
 export const StorageService = {
   async initStorage(): Promise<void> {
     try {
       const hasSeeded = await AsyncStorage.getItem(STORAGE_KEYS.HAS_SEEDED);
       if (!hasSeeded) {
-        await AsyncStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(SEED_TASKS));
+        await AsyncStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify([]));
         await AsyncStorage.setItem(STORAGE_KEYS.ROADMAPS, JSON.stringify(INITIAL_ROADMAPS));
-        await AsyncStorage.setItem(STORAGE_KEYS.CHECKLIST_PREFIX + getTodayString(), JSON.stringify(SEED_CHECKLIST));
-        await AsyncStorage.setItem(STORAGE_KEYS.STUDY_SESSIONS, JSON.stringify(SEED_SESSIONS));
+        await AsyncStorage.setItem(STORAGE_KEYS.CHECKLIST_PREFIX + getTodayString(), JSON.stringify([]));
+        await AsyncStorage.setItem(STORAGE_KEYS.STUDY_SESSIONS, JSON.stringify([]));
         await AsyncStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(DEFAULT_SETTINGS));
         await AsyncStorage.setItem(STORAGE_KEYS.HAS_SEEDED, 'true');
       }
@@ -148,10 +56,10 @@ export const StorageService = {
       if (data) {
         return JSON.parse(data);
       }
-      return SEED_TASKS;
+      return [];
     } catch (e) {
       console.error('getTasks error:', e);
-      return SEED_TASKS;
+      return [];
     }
   },
 
@@ -190,10 +98,6 @@ export const StorageService = {
       if (data) {
         return JSON.parse(data);
       }
-      // If today and no checklist yet, return default template
-      if (date === getTodayString()) {
-        return SEED_CHECKLIST;
-      }
       return [];
     } catch (e) {
       console.error('getChecklist error:', e);
@@ -215,10 +119,10 @@ export const StorageService = {
       if (data) {
         return JSON.parse(data);
       }
-      return SEED_SESSIONS;
+      return [];
     } catch (e) {
       console.error('getStudySessions error:', e);
-      return SEED_SESSIONS;
+      return [];
     }
   },
 

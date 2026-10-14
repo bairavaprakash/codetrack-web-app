@@ -3,6 +3,7 @@ import { Tabs } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { AppProvider, useApp } from '@/context/AppContext';
 import { Colors } from '@/constants/colors';
@@ -12,6 +13,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 function TabsNavigator() {
   const systemScheme = useColorScheme();
   const { settings, isLoading } = useApp();
+  const insets = useSafeAreaInsets();
 
   const isDark =
     settings.theme === 'system' ? systemScheme === 'dark' : settings.theme === 'dark';
@@ -22,6 +24,13 @@ function TabsNavigator() {
       SplashScreen.hideAsync().catch(() => {});
     }
   }, [isLoading]);
+
+  // Safe bottom insets for Android gesture/button navigation and iOS home indicator
+  const bottomInset = insets.bottom;
+  const paddingBottom = Platform.OS === 'ios'
+    ? Math.max(bottomInset, 20)
+    : Math.max(bottomInset, 8);
+  const tabHeight = (Platform.OS === 'ios' ? 56 : 54) + paddingBottom;
 
   return (
     <>
@@ -35,18 +44,19 @@ function TabsNavigator() {
             backgroundColor: theme.tabBar,
             borderTopColor: theme.tabBarBorder,
             borderTopWidth: 1,
-            height: Platform.OS === 'ios' ? 86 : 68,
-            paddingBottom: Platform.OS === 'ios' ? 28 : 10,
+            height: tabHeight,
+            paddingBottom: paddingBottom,
             paddingTop: 8,
-            elevation: 8,
+            elevation: 12,
             shadowColor: '#000',
-            shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 8,
+            shadowOffset: { width: 0, height: -3 },
+            shadowOpacity: 0.15,
+            shadowRadius: 10,
           },
           tabBarLabelStyle: {
             fontSize: 11,
             fontWeight: '600',
+            letterSpacing: -0.1,
           },
         }}>
         <Tabs.Screen
@@ -104,7 +114,7 @@ function TabsNavigator() {
         <Tabs.Screen
           name="timer"
           options={{
-            title: 'Focus & Stats',
+            title: 'Focus',
             tabBarIcon: ({ color, focused }) => (
               <Ionicons
                 name={focused ? 'timer' : 'timer-outline'}

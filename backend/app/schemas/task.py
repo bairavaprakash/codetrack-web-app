@@ -18,6 +18,7 @@ class TaskBase(BaseModel):
     due_date: Optional[str] = None
     due_time: Optional[str] = None
     reminder_time: Optional[str] = None
+    language: Optional[str] = None
     is_checklist_item: bool = False
     estimated_minutes: int = 30
     actual_minutes: int = 0
@@ -37,6 +38,7 @@ class TaskUpdate(BaseModel):
     due_date: Optional[str] = None
     due_time: Optional[str] = None
     reminder_time: Optional[str] = None
+    language: Optional[str] = None
     is_checklist_item: Optional[bool] = None
     estimated_minutes: Optional[int] = None
     actual_minutes: Optional[int] = None

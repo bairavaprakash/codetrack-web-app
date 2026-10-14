@@ -83,7 +83,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const isAuthenticated = useMemo(() => !!user, [user]);
 
-  // Load local data and check backend connectivity on boot
+  // Load local data and sync with server on boot
   const loadData = useCallback(async () => {
     try {
       await StorageService.initStorage();
@@ -97,10 +97,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           AuthService.getUser(),
         ]);
 
-      setTasks(storedTasks);
+      // Remove any lingering legacy seed tasks or sample data
+      const cleanTasks = storedTasks.filter((t) => !t.id.startsWith('seed-task-'));
+      const cleanChecklist = storedChecklist.filter((c) => !c.id.startsWith('cl-'));
+      const cleanSessions = storedSessions.filter(
+        (s) => !['sess-1', 'sess-2', 'sess-3'].includes(s.id)
+      );
+
+      setTasks(cleanTasks);
       setRoadmaps(storedRoadmaps);
-      setChecklist(storedChecklist);
-      setStudySessions(storedSessions);
+      setChecklist(cleanChecklist);
+      setStudySessions(cleanSessions);
       setSettings(storedSettings);
       if (cachedUser) {
         setUser(cachedUser);
@@ -110,7 +117,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const online = await healthApi.check();
       setIsOnline(online);
 
-      // If online and authenticated, refresh profile from server
+      // If online and authenticated, refresh profile and sync real server tasks
       if (online && cachedUser) {
         try {
           const profileData = await authApi.getMe();
@@ -127,8 +134,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setUser(mappedUser);
             await AuthService.saveUser(mappedUser);
           }
+
+          // Fetch real tasks from backend
+          const serverTasks = await tasksApi.list();
+          if (Array.isArray(serverTasks)) {
+            const mappedServerTasks: Task[] = serverTasks.map((t: any) => ({
+              id: `task-${t.id}`,
+              title: t.title,
+              description: t.description || undefined,
+              category: (t.category ? t.category.charAt(0).toUpperCase() + t.category.slice(1) : 'Learning') as any,
+              priority: (t.priority ? t.priority.charAt(0).toUpperCase() + t.priority.slice(1) : 'Medium') as any,
+              language: t.language || undefined,
+              date: t.due_date || getTodayString(),
+              startTime: undefined,
+              deadline: t.due_time || undefined,
+              completed: t.status === 'completed',
+              subtasks: (t.subtasks || []).map((st: any) => ({
+                id: st.id,
+                title: st.title,
+                completed: Boolean(st.completed),
+              })),
+              reminder: t.reminder_time ? { id: `rem-${t.id}`, enabled: true, triggerTime: t.reminder_time } : undefined,
+              createdAt: t.created_at,
+              updatedAt: t.updated_at,
+            }));
+            setTasks(mappedServerTasks);
+            await StorageService.saveTasks(mappedServerTasks);
+          }
         } catch (authErr) {
-          console.warn('Could not refresh user profile from server:', authErr);
+          console.warn('Could not refresh user profile/tasks from server:', authErr);
         }
       }
     } catch (e) {
@@ -141,46 +175,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     let isMounted = true;
     (async () => {
-      try {
-        await StorageService.initStorage();
-        const [storedTasks, storedRoadmaps, storedChecklist, storedSessions, storedSettings, cachedUser] =
-          await Promise.all([
-            StorageService.getTasks(),
-            StorageService.getRoadmaps(),
-            StorageService.getChecklist(getTodayString()),
-            StorageService.getStudySessions(),
-            StorageService.getSettings(),
-            AuthService.getUser(),
-          ]);
-
-        if (isMounted) {
-          setTasks(storedTasks);
-          setRoadmaps(storedRoadmaps);
-          setChecklist(storedChecklist);
-          setStudySessions(storedSessions);
-          setSettings(storedSettings);
-          if (cachedUser) {
-            setUser(cachedUser);
-          }
-        }
-
-        const online = await healthApi.check();
-        if (isMounted) {
-          setIsOnline(online);
-        }
-      } catch (e) {
-        console.error('Failed to load AppContext data:', e);
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+      if (isMounted) {
+        await loadData();
       }
     })();
-
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [loadData]);
 
   // Authentication methods
   const login = async (usernameOrEmail: string, password: string): Promise<void> => {
@@ -255,7 +257,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       // 1. Fetch server tasks
       const serverTasks = await tasksApi.list();
-      if (Array.isArray(serverTasks) && serverTasks.length > 0) {
+      if (Array.isArray(serverTasks)) {
         // Map backend tasks to frontend task shape
         const mappedServerTasks: Task[] = serverTasks.map((t: any) => ({
           id: `task-${t.id}`,
@@ -263,7 +265,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           description: t.description || undefined,
           category: (t.category ? t.category.charAt(0).toUpperCase() + t.category.slice(1) : 'Learning') as any,
           priority: (t.priority ? t.priority.charAt(0).toUpperCase() + t.priority.slice(1) : 'Medium') as any,
-          language: undefined,
+          language: t.language || undefined,
           date: t.due_date || getTodayString(),
           startTime: undefined,
           deadline: t.due_time || undefined,
@@ -273,15 +275,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             title: st.title,
             completed: Boolean(st.completed),
           })),
+          reminder: t.reminder_time ? { id: `rem-${t.id}`, enabled: true, triggerTime: t.reminder_time } : undefined,
           createdAt: t.created_at,
           updatedAt: t.updated_at,
         }));
 
-        // Merge with local tasks
-        const localOnly = tasks.filter((lt) => !mappedServerTasks.some((st) => st.id === lt.id));
-        const merged = [...mappedServerTasks, ...localOnly];
-        setTasks(merged);
-        await StorageService.saveTasks(merged);
+        setTasks(mappedServerTasks);
+        await StorageService.saveTasks(mappedServerTasks);
       }
     } catch (err) {
       console.warn('Sync with server error (running in offline cache mode):', err);
@@ -307,14 +307,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       totalTopics += r.topics.filter((top) => top.completed).length;
     });
 
+    const currentStreak = user?.streak ?? (todayCompleted > 0 ? 1 : 0);
+    const longestStreak = user?.streak ?? (todayCompleted > 0 ? 1 : 0);
+
     return {
       todayTotalTasks: todayTotal,
       todayCompletedTasks: todayCompleted,
       todayPendingTasks: todayPending,
       todayCompletionRate: todayRate,
       todayStudyMinutes: studyMinutes,
-      currentStreak: user?.streak || (todayCompleted > 0 ? 3 : 2),
-      longestStreak: 7,
+      currentStreak,
+      longestStreak,
       totalTopicsCompleted: totalTopics,
     };
   }, [tasks, studySessions, roadmaps, user]);
@@ -324,9 +327,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<Task> => {
     const now = new Date().toISOString();
+    let assignedId = `task-${Date.now()}`;
+
+    // Sync to backend first if authenticated to persist in database and get server ID
+    if (isAuthenticated && isOnline) {
+      try {
+        const createdServerTask = await tasksApi.create({
+          title: taskData.title,
+          description: taskData.description,
+          category: taskData.category.toLowerCase(),
+          priority: taskData.priority.toLowerCase(),
+          status: taskData.completed ? 'completed' : 'pending',
+          due_date: taskData.date,
+          due_time: taskData.deadline,
+          reminder_time: taskData.reminder?.enabled ? taskData.reminder.triggerTime : undefined,
+          language: taskData.language,
+          subtasks: taskData.subtasks.map((st) => ({ id: st.id, title: st.title, completed: st.completed })),
+        });
+        if (createdServerTask && createdServerTask.id) {
+          assignedId = `task-${createdServerTask.id}`;
+        }
+      } catch (err) {
+        console.warn('Backend task create failed or offline, stored locally:', err);
+      }
+    }
+
     const newTask: Task = {
       ...taskData,
-      id: `task-${Date.now()}`,
+      id: assignedId,
       createdAt: now,
       updatedAt: now,
     };
@@ -338,27 +366,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
-    const updated = [newTask, ...tasks];
+    const updated = [newTask, ...tasks.filter((t) => t.id !== assignedId)];
     setTasks(updated);
     await StorageService.saveTasks(updated);
-
-    // Sync to backend if authenticated
-    if (isAuthenticated && isOnline) {
-      try {
-        await tasksApi.create({
-          title: newTask.title,
-          description: newTask.description,
-          category: newTask.category.toLowerCase(),
-          priority: newTask.priority.toLowerCase(),
-          status: newTask.completed ? 'completed' : 'pending',
-          due_date: newTask.date,
-          due_time: newTask.deadline,
-          subtasks: newTask.subtasks.map((st) => ({ id: st.id, title: st.title, completed: st.completed })),
-        });
-      } catch (err) {
-        console.warn('Backend task create queued locally for sync:', err);
-      }
-    }
 
     return newTask;
   };
@@ -370,7 +380,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTasks(updated);
     await StorageService.saveTasks(updated);
 
-    // If ID is numeric server ID
     const numId = parseInt(updatedTask.id.replace('task-', ''), 10);
     if (!isNaN(numId) && isAuthenticated && isOnline) {
       try {
@@ -382,7 +391,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           status: updatedTask.completed ? 'completed' : 'pending',
           due_date: updatedTask.date,
           due_time: updatedTask.deadline,
-          subtasks: updatedTask.subtasks,
+          reminder_time: updatedTask.reminder?.enabled ? updatedTask.reminder.triggerTime : undefined,
+          language: updatedTask.language,
+          subtasks: updatedTask.subtasks.map((st) => ({ id: st.id, title: st.title, completed: st.completed })),
         });
       } catch (err) {
         console.warn('Backend task update queued locally:', err);
@@ -434,9 +445,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleTaskCompleted = async (taskId: string): Promise<void> => {
+    let nextState = false;
     const updated = tasks.map((t) => {
       if (t.id === taskId) {
-        const nextState = !t.completed;
+        nextState = !t.completed;
         return {
           ...t,
           completed: nextState,

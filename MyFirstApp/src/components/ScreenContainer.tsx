@@ -30,7 +30,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
   contentContainerStyle,
   refreshing = false,
   onRefresh,
-  edges = ['top'],
+  edges = [],
   keyboardAvoiding = false,
 }) => {
   const { settings } = useApp();

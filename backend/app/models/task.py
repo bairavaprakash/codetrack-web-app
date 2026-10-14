@@ -18,6 +18,7 @@ class Task(Base):
     due_date: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     due_time: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
     reminder_time: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    language: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     is_checklist_item: Mapped[bool] = mapped_column(Boolean, default=False)
     estimated_minutes: Mapped[int] = mapped_column(Integer, default=30)
     actual_minutes: Mapped[int] = mapped_column(Integer, default=0)
